@@ -148,6 +148,7 @@ export function analyzeInstagramData(
   }
   
   return {
+    hasPreviousData: !!previousData,
     unfollowers,
     youUnfollowed,
     mutualFollows,
