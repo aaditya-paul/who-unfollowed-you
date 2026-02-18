@@ -1,17 +1,21 @@
-import { InstagramUser, InstagramData, AnalysisResult } from '@/types/instagram';
+import {
+  InstagramUser,
+  InstagramData,
+  AnalysisResult,
+} from "@/types/instagram";
 
 function extractUsernameFromHref(href: unknown): string | null {
-  if (typeof href !== 'string') return null;
+  if (typeof href !== "string") return null;
 
   const raw = href.trim();
   if (!raw) return null;
 
   const parseFromPath = (path: string): string | null => {
-    const parts = path.split('/').filter(Boolean);
+    const parts = path.split("/").filter(Boolean);
     if (parts.length === 0) return null;
     const last = parts[parts.length - 1];
     const prev = parts.length >= 2 ? parts[parts.length - 2] : null;
-    if (prev === '_u') return last;
+    if (prev === "_u") return last;
     return last;
   };
 
@@ -19,13 +23,15 @@ function extractUsernameFromHref(href: unknown): string | null {
     const url = new URL(raw);
     return parseFromPath(url.pathname);
   } catch {
-    const noQuery = raw.split('?')[0] ?? raw;
+    const noQuery = raw.split("?")[0] ?? raw;
     return parseFromPath(noQuery);
   }
 }
 
 function extractInstagramUser(item: any): InstagramUser | null {
-  const first = Array.isArray(item?.string_list_data) ? item.string_list_data[0] : undefined;
+  const first = Array.isArray(item?.string_list_data)
+    ? item.string_list_data[0]
+    : undefined;
 
   const candidates: unknown[] = [
     first?.value,
@@ -37,13 +43,13 @@ function extractInstagramUser(item: any): InstagramUser | null {
 
   let username: string | null = null;
   for (const c of candidates) {
-    if (typeof c === 'string' && c.trim()) {
+    if (typeof c === "string" && c.trim()) {
       username = c.trim();
       break;
     }
   }
 
-  if (username && username.startsWith('http')) {
+  if (username && username.startsWith("http")) {
     username = extractUsernameFromHref(username);
   } else if (!username) {
     username = extractUsernameFromHref(first?.href ?? item?.href);
@@ -52,7 +58,8 @@ function extractInstagramUser(item: any): InstagramUser | null {
   if (!username || !username.trim()) return null;
 
   const ts = first?.timestamp ?? item?.timestamp;
-  const timestamp = typeof ts === 'number' && Number.isFinite(ts) ? ts : undefined;
+  const timestamp =
+    typeof ts === "number" && Number.isFinite(ts) ? ts : undefined;
 
   return { value: username, timestamp };
 }
@@ -69,9 +76,11 @@ export function parseFollowersFile(content: string): InstagramUser[] {
       ? data.relationships_followers
       : [];
 
-  if (!Array.isArray(list)) throw new Error('Invalid followers file format');
+  if (!Array.isArray(list)) throw new Error("Invalid followers file format");
 
-  return list.map(extractInstagramUser).filter((u): u is InstagramUser => Boolean(u));
+  return list
+    .map(extractInstagramUser)
+    .filter((u): u is InstagramUser => Boolean(u));
 }
 
 /**
@@ -86,9 +95,11 @@ export function parseFollowingFile(content: string): InstagramUser[] {
       ? data.relationships_following
       : [];
 
-  if (!Array.isArray(list)) throw new Error('Invalid following file format');
+  if (!Array.isArray(list)) throw new Error("Invalid following file format");
 
-  return list.map(extractInstagramUser).filter((u): u is InstagramUser => Boolean(u));
+  return list
+    .map(extractInstagramUser)
+    .filter((u): u is InstagramUser => Boolean(u));
 }
 
 /**
@@ -96,57 +107,65 @@ export function parseFollowingFile(content: string): InstagramUser[] {
  */
 export function analyzeInstagramData(
   currentData: InstagramData,
-  previousData?: InstagramData
+  previousData?: InstagramData,
 ): AnalysisResult {
-  const currentFollowers = new Set(currentData.followers.map(f => f.value.toLowerCase()));
-  const currentFollowing = new Set(currentData.following.map(f => f.value.toLowerCase()));
-  
+  const currentFollowers = new Set(
+    currentData.followers.map((f) => f.value.toLowerCase()),
+  );
+  const currentFollowing = new Set(
+    currentData.following.map((f) => f.value.toLowerCase()),
+  );
+
   // Find mutual follows
-  const mutualFollows = currentData.followers.filter(follower =>
-    currentFollowing.has(follower.value.toLowerCase())
+  const mutualFollows = currentData.followers.filter((follower) =>
+    currentFollowing.has(follower.value.toLowerCase()),
   );
-  
+
   // Find people you follow but don't follow you back
-  const notFollowingBack = currentData.following.filter(following =>
-    !currentFollowers.has(following.value.toLowerCase())
+  const notFollowingBack = currentData.following.filter(
+    (following) => !currentFollowers.has(following.value.toLowerCase()),
   );
-  
+
   // Find people following you but you don't follow back
-  const notFollowingThemBack = currentData.followers.filter(follower =>
-    !currentFollowing.has(follower.value.toLowerCase())
+  const notFollowingThemBack = currentData.followers.filter(
+    (follower) => !currentFollowing.has(follower.value.toLowerCase()),
   );
-  
+
   // Compare with previous data if available
   let unfollowers: InstagramUser[] = [];
   let youUnfollowed: InstagramUser[] = [];
   let newFollowers: InstagramUser[] = [];
   let newFollowing: InstagramUser[] = [];
-  
+
   if (previousData) {
-    const previousFollowers = new Set(previousData.followers.map(f => f.value.toLowerCase()));
-    const previousFollowing = new Set(previousData.following.map(f => f.value.toLowerCase()));
-    
+    const previousFollowers = new Set(
+      previousData.followers.map((f) => f.value.toLowerCase()),
+    );
+    const previousFollowing = new Set(
+      previousData.following.map((f) => f.value.toLowerCase()),
+    );
+
     // Find who unfollowed you
-    unfollowers = previousData.followers.filter(follower =>
-      !currentFollowers.has(follower.value.toLowerCase())
+    unfollowers = previousData.followers.filter(
+      (follower) => !currentFollowers.has(follower.value.toLowerCase()),
     );
-    
+
     // Find who you unfollowed
-    youUnfollowed = previousData.following.filter(following =>
-      !currentFollowing.has(following.value.toLowerCase())
+    youUnfollowed = previousData.following.filter(
+      (following) => !currentFollowing.has(following.value.toLowerCase()),
     );
-    
+
     // Find new followers
-    newFollowers = currentData.followers.filter(follower =>
-      !previousFollowers.has(follower.value.toLowerCase())
+    newFollowers = currentData.followers.filter(
+      (follower) => !previousFollowers.has(follower.value.toLowerCase()),
     );
-    
+
     // Find new following
-    newFollowing = currentData.following.filter(following =>
-      !previousFollowing.has(following.value.toLowerCase())
+    newFollowing = currentData.following.filter(
+      (following) => !previousFollowing.has(following.value.toLowerCase()),
     );
   }
-  
+
   return {
     hasPreviousData: !!previousData,
     unfollowers,
